@@ -1,10 +1,16 @@
 #!/bin/bash
 
+##
+# Init
+#
 readonly SUMMARY_SQL="SELECT id, user, db, command, time, state, concat(substr(replace(info, '\r\n', ' '), 1, 30), '...') as info FROM INFORMATION_SCHEMA.PROCESSLIST order by time desc"
 readonly EXPANDED_SQL="SELECT id, user, db, command, time, state, info FROM INFORMATION_SCHEMA.PROCESSLIST order by time desc"
 sql="$SUMMARY_SQL"
 delay=3
 
+##
+# Functions
+#
 isInteger()
 {
     grep -qE '^[0-9]+$' <<< "$1"
@@ -42,6 +48,14 @@ mysqlKillPid()
     pressAnyKey
 }
 
+##
+# Checks
+#
+[[ -r ~/.my.cnf ]] || error "cannot find ~/.my.cnf" 1
+
+##
+# Main
+#
 refresh
 while read -r -s -n1 -t"$delay" c || :; do
     if [[ $c = 'h' ]]; then
