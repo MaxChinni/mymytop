@@ -37,6 +37,9 @@ refresh()
 {
     clear
     echo "$(date) - type \"h\" for help"
+    echo -n "Idle display is $(test "$idle" -eq 1 && echo on || echo off), "
+    echo -n "delay is ${delay}s"
+    echo
     echo
     prepareSQL
     mysql --table <<< "$sql" | less -FX
