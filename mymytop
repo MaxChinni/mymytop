@@ -3,10 +3,11 @@
 ##
 # Init
 #
-readonly SUMMARY_SQL="SELECT id, user, db, command, time, state, concat(substr(replace(info, '\r\n', ' '), 1, 30), '...') as info FROM INFORMATION_SCHEMA.PROCESSLIST order by time desc"
-readonly EXPANDED_SQL="SELECT id, user, db, command, time, state, info FROM INFORMATION_SCHEMA.PROCESSLIST order by time desc"
-sql="$SUMMARY_SQL"
+readonly SUMMARY_SQL_TPL="SELECT id, user, db, command, time, state, concat(substr(replace(info, '\r\n', ' '), 1, 30), '...') as info FROM INFORMATION_SCHEMA.PROCESSLIST WHERE {WHERE} ORDER BY time desc"
+readonly EXPANDED_SQL_TPL="SELECT id, user, db, command, time, state, info FROM INFORMATION_SCHEMA.PROCESSLIST WHERE {WHERE} ORDER BY time desc"
+sql_template="$SUMMARY_SQL_TPL"
 delay=3
+idle=1
 
 ##
 # Functions
@@ -37,7 +38,18 @@ refresh()
     clear
     echo "$(date) - type \"h\" for help"
     echo
+    prepareSQL
     mysql --table <<< "$sql" | less -FX
+}
+
+prepareSQL()
+{
+    sql="$sql_template"
+    if [[ $idle -eq 0 ]]; then
+        sql="$(sed "s/{WHERE}/state LIKE '%executing%' AND {WHERE}/g" <<< "$sql")"
+    fi
+    sql="$(sed "s/{WHERE}/1/g" <<< "$sql")"
+    sql="$(sed "s/ AND 1| WHERE 1//g" <<< "$sql")"
 }
 
 mysqlKillPid()
@@ -65,6 +77,7 @@ while read -r -s -n1 -t"$delay" c || :; do
         echo "  k : kill id"
         echo "  s : change sleep time (refresh period)"
         echo "  x : toggle show full query"
+        echo "  i : toggle display of idle thread (show only \"state\" \"executing\")"
         echo
         pressAnyKey
     elif [[ $c = 'p' ]]; then
@@ -77,6 +90,8 @@ while read -r -s -n1 -t"$delay" c || :; do
         if [[ -n $pidToKill ]]; then
             mysqlKillPid "$pidToKill"
         fi
+    elif [[ $c = 'i' ]]; then
+        idle=$((++idle % 2))
     elif [[ $c = 's' ]]; then
         prevDelay="$delay"
         read -r -p 'Sleep time: ' delay
@@ -85,10 +100,10 @@ while read -r -s -n1 -t"$delay" c || :; do
         fi
         isFloat "$delay" || error "delay is not valid" 11
     elif [[ $c = 'x' ]]; then
-        if [[ $sql = "$SUMMARY_SQL" ]]; then
-            sql="$EXPANDED_SQL"
+        if [[ $sql_template = "$SUMMARY_SQL_TPL" ]]; then
+            sql_template="$EXPANDED_SQL_TPL"
         else
-            sql="$SUMMARY_SQL"
+            sql_template="$SUMMARY_SQL_TPL"
         fi
     fi
     refresh
