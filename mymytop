@@ -1,0 +1,78 @@
+#!/bin/bash
+
+readonly SUMMARY_SQL="SELECT id, user, db, command, time, state, concat(substr(replace(info, '\r\n', ' '), 1, 30), '...') as info FROM INFORMATION_SCHEMA.PROCESSLIST order by time desc"
+readonly EXPANDED_SQL="SELECT id, user, db, command, time, state, info FROM INFORMATION_SCHEMA.PROCESSLIST order by time desc"
+sql="$SUMMARY_SQL"
+delay=3
+
+isInteger()
+{
+    grep -qE '^[0-9]+$' <<< "$1"
+}
+
+isFloat()
+{
+    grep -qE '^[0-9]+|[0-9]*\.[0-9]+$' <<< "$1"
+}
+
+error()
+{
+    echo "$(basename "$0"): $1" >&2
+    exit "$2"
+}
+
+pressAnyKey()
+{
+    read -r -n1 -p 'Press any key...'
+}
+
+refresh()
+{
+    clear
+    echo "$(date) - type \"h\" for help"
+    echo
+    mysql --table <<< "$sql" | less -FX
+}
+
+mysqlKillPid()
+{
+    local pid="$1"
+    isInteger "$pid" || error "pid is not valid" 10
+    echo "kill $pid;" | mysql -v
+    pressAnyKey
+}
+
+refresh
+while read -r -s -n1 -t"$delay" c || :; do
+    if [[ $c = 'h' ]]; then
+        echo "Help"
+        echo "  q : quit"
+        echo "  k : kill id"
+        echo "  d : change delay (refresh period)"
+        echo "  x : toggle show full query"
+        echo
+        pressAnyKey
+    elif [[ $c = 'q' ]]; then
+        break
+    elif [[ $c = 'k' ]]; then
+        read -r -p 'kill id: ' pidToKill
+        if [[ -n $pidToKill ]]; then
+            mysqlKillPid "$pidToKill"
+        fi
+    elif [[ $c = 'd' ]]; then
+        prevDelay="$delay"
+        read -r -p 'Delay: ' delay
+        if [[ -z $delay ]]; then
+            delay="$prevDelay"
+        fi
+        isFloat "$delay" || error "delay is not valid" 11
+    elif [[ $c = 'x' ]]; then
+        if [[ $sql = "$SUMMARY_SQL" ]]; then
+            sql="$EXPANDED_SQL"
+        else
+            sql="$SUMMARY_SQL"
+        fi
+    fi
+    refresh
+done
+echo
