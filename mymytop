@@ -9,6 +9,13 @@ sql_template="$SUMMARY_SQL_TPL"
 delay=3
 idle=1
 colorize=1
+##
+# colors
+# see https://en.wikipedia.org/wiki/ANSI_escape_code#Colors
+#
+red="\x1b[91m"
+cyan="\x1b[36m"
+reset="\x1b[0m"
 
 ##
 # Functions
@@ -40,7 +47,7 @@ refresh()
     echo "$(date) - type \"h\" for help"
     echo -n "Idle display is $(test "$idle" -eq 1 && echo on || echo off), "
     echo -n "delay is ${delay}s, "
-    echo -n "colors are $(test "$colorize" -eq 1 && echo on || echo off)"
+    echo -n -e "colors are $(test "$colorize" -eq 1 && echo "${cyan}on${reset}" || echo off)"
     echo
     echo
     prepareSQL
@@ -60,10 +67,6 @@ prepareSQL()
 colorizeOutput()
 {
     local rowNum=0
-    # colors: https://en.wikipedia.org/wiki/ANSI_escape_code#Colors
-    local red="\x1b[91m"
-    local cyan="\x1b[36m"
-    local reset="\x1b[0m"
 
     if [[ $colorize -eq 0 ]]; then
         cat
