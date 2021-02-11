@@ -8,6 +8,7 @@ readonly EXPANDED_SQL_TPL="SELECT id, user, db, command, time, state, info FROM 
 sql_template="$SUMMARY_SQL_TPL"
 delay=3
 idle=1
+colorize=1
 
 ##
 # Functions
@@ -38,11 +39,12 @@ refresh()
     clear
     echo "$(date) - type \"h\" for help"
     echo -n "Idle display is $(test "$idle" -eq 1 && echo on || echo off), "
-    echo -n "delay is ${delay}s"
+    echo -n "delay is ${delay}s, "
+    echo -n "colors are $(test "$colorize" -eq 1 && echo on || echo off)"
     echo
     echo
     prepareSQL
-    mysql --table <<< "$sql" | less -FX
+    mysql --table <<< "$sql" | colorizeOutput
 }
 
 prepareSQL()
@@ -53,6 +55,31 @@ prepareSQL()
     fi
     sql="$(sed "s/{WHERE}/1/g" <<< "$sql")"
     sql="$(sed "s/ AND 1| WHERE 1//g" <<< "$sql")"
+}
+
+colorizeOutput()
+{
+    local rowNum=0
+    # colors: https://en.wikipedia.org/wiki/ANSI_escape_code#Colors
+    local red="\x1b[91m"
+    local cyan="\x1b[36m"
+    local reset="\x1b[0m"
+
+    if [[ $colorize -eq 0 ]]; then
+        cat
+        return
+    fi
+
+    while read -r row; do
+        if [[ $rowNum -gt 2 ]]; then
+            echo "$row" | \
+                sed "s/executing/${red}executing${reset}/" | \
+                sed -r 's/ \| ([^|]+)\|$/ | '"${cyan}"'\1'"${reset}"'|/'
+        else
+            echo "$row"
+        fi
+        let rowNum++
+    done
 }
 
 mysqlKillPid()
@@ -81,6 +108,7 @@ while read -r -s -n1 -t"$delay" c || :; do
         echo "  s : change sleep time (refresh period)"
         echo "  x : toggle show full query"
         echo "  i : toggle display of idle thread (show only \"state\" \"executing\")"
+        echo "  c : toggle colors"
         echo
         pressAnyKey
     elif [[ $c = 'p' ]]; then
@@ -95,6 +123,8 @@ while read -r -s -n1 -t"$delay" c || :; do
         fi
     elif [[ $c = 'i' ]]; then
         idle=$((++idle % 2))
+    elif [[ $c = 'c' ]]; then
+        colorize=$((++colorize % 2))
     elif [[ $c = 's' ]]; then
         prevDelay="$delay"
         read -r -p 'Sleep time: ' delay
