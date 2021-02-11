@@ -63,7 +63,7 @@ while read -r -s -n1 -t"$delay" c || :; do
         echo "  q : quit"
         echo "  p : pause"
         echo "  k : kill id"
-        echo "  d : change delay (refresh period)"
+        echo "  s : change sleep time (refresh period)"
         echo "  x : toggle show full query"
         echo
         pressAnyKey
@@ -77,9 +77,9 @@ while read -r -s -n1 -t"$delay" c || :; do
         if [[ -n $pidToKill ]]; then
             mysqlKillPid "$pidToKill"
         fi
-    elif [[ $c = 'd' ]]; then
+    elif [[ $c = 's' ]]; then
         prevDelay="$delay"
-        read -r -p 'Delay: ' delay
+        read -r -p 'Sleep time: ' delay
         if [[ -z $delay ]]; then
             delay="$prevDelay"
         fi
