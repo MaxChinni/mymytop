@@ -61,10 +61,14 @@ while read -r -s -n1 -t"$delay" c || :; do
     if [[ $c = 'h' ]]; then
         echo "Help"
         echo "  q : quit"
+        echo "  p : pause"
         echo "  k : kill id"
         echo "  d : change delay (refresh period)"
         echo "  x : toggle show full query"
         echo
+        pressAnyKey
+    elif [[ $c = 'p' ]]; then
+        echo "Paused"
         pressAnyKey
     elif [[ $c = 'q' ]]; then
         break
